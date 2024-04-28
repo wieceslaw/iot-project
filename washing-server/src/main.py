@@ -54,7 +54,7 @@ async def main():
     await asyncio.gather(
         on_washer_done(),
         on_washer_connect(),
-        websockets.serve(on_connect, "localhost", 8765),
+        websockets.serve(on_connect, "0.0.0.0", 8765),
     )
 
 
