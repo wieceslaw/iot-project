@@ -12,3 +12,9 @@ services:
     network_mode: host
     volumes:
       - ./mosquitto:/etc/mosquitto
+
+  server:
+    image: "se.ifmo.ru/washing-server:latest"
+    network_mode: host
+    depends_on:
+      - mosquitto
