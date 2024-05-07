@@ -14,8 +14,45 @@ services:
       - ./mosquitto:/etc/mosquitto
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
 
-  server:
-    image: "se.ifmo.ru/washing-server:latest"
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
     network_mode: host
-    depends_on:
-      - mosquitto
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prom_data:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana
+    volumes:
+      - ./grafana:/etc/grafana/provisioning/datasources
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+
+  #  server:
+  #    image: "se.ifmo.ru/washing-server:latest"
+  #    network_mode: host
+  #    depends_on:
+  #      - mosquitto
+
+
+volumes:
+  prom_data:
