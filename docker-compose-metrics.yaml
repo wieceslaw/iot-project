@@ -13,6 +13,9 @@ services:
     volumes:
       - ./mosquitto:/etc/mosquitto
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    logging:
+      options:
+        max-size: 50m
 
   prometheus:
     image: prom/prometheus
@@ -24,6 +27,9 @@ services:
     volumes:
       - ./prometheus:/etc/prometheus
       - prom_data:/prometheus
+    logging:
+      options:
+        max-size: 50m
 
   grafana:
     image: grafana/grafana
@@ -32,27 +38,14 @@ services:
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=grafana
+      - GF_SECURITY_ADMIN_PASSWORD=13t1Y04Mtt
     volumes:
       - ./grafana:/etc/grafana/provisioning/datasources
-
-  node_exporter:
-    image: quay.io/prometheus/node-exporter:latest
-    container_name: node_exporter
-    command:
-      - '--path.rootfs=/host'
-    network_mode: host
-    pid: host
-    restart: unless-stopped
-    volumes:
-      - '/:/host:ro,rslave'
-
-  #  server:
-  #    image: "se.ifmo.ru/washing-server:latest"
-  #    network_mode: host
-  #    depends_on:
-  #      - mosquitto
-
+      - grafana_data:/var/lib/grafana
+    logging:
+      options:
+        max-size: 50m
 
 volumes:
   prom_data:
+  grafana_data:

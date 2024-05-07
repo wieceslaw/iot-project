@@ -13,6 +13,7 @@ clients = {}
 washers = []
 
 SERVER_CLIENTS_GAUGE = Gauge('server_clients', 'Description of my counter')
+WASHING_MACHINES_GAUGE = Gauge('washing_machines', 'Description of my counter')
 REQUEST_TIME_SUMMARY = Summary('washing_server_requests', 'Time spent in request')
 WASHING_TIME_SUMMARY = Summary('washing_time', 'Time spent in washing')
 
@@ -23,7 +24,7 @@ async def on_connect(websocket, path, address):
     print(f"Client connected, id:{client_id}")
     clients[client_id] = websocket
     try:
-        async with Client("localhost") as client:
+        async with Client(address) as client:
             async for message in websocket:
                 print(f"Client[{client_id}]: {message}")
                 start = datetime.datetime.now()
@@ -43,6 +44,7 @@ async def on_washer_connect(address):
         async with client.messages() as messages:
             await client.subscribe("washing/register")
             async for message in messages:
+                WASHING_MACHINES_GAUGE.inc()
                 washer_id = message.payload.decode("utf-8")
                 print(f"Washer id={washer_id} connected")
                 washers.append(washer_id)
@@ -53,6 +55,7 @@ async def on_washer_disconnect(address):
         async with client.messages() as messages:
             await client.subscribe("washing/deregister")
             async for message in messages:
+                WASHING_MACHINES_GAUGE.dec()
                 washer_id = message.payload.decode("utf-8")
                 print(f"Washer id={washer_id} disconnected")
                 washers.remove(washer_id)
