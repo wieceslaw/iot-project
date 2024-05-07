@@ -24,6 +24,9 @@ async def wash(address):
                 order_done = {
                     "order_id": order["id"],
                     "client_id": order["client_id"],
+                    "created_at": order["created_at"],
+                    "finished_at": str(finished_at.strftime('%Y-%m-%d %H:%M:%S')),
+                    "volume": order["volume"],
                     "took_seconds": str((finished_at - created_at).seconds),
                 }
                 await client.publish("washing/done", payload=f"{json.dumps(order_done)}")

@@ -1,9 +1,10 @@
 import asyncio
-import datetime
+from datetime import datetime
 import json
 import random
 import sys
 
+import asyncpg
 import websockets
 from asyncio_mqtt import Client
 from prometheus_client import start_http_server, Summary, Gauge
@@ -27,10 +28,10 @@ async def on_connect(websocket, path, address):
         async with Client(address) as client:
             async for message in websocket:
                 print(f"Client[{client_id}]: {message}")
-                start = datetime.datetime.now()
+                start = datetime.now()
                 random_washer_id = random.choice(washers)
                 await client.publish(f"washer/{random_washer_id}", message)
-                end = datetime.datetime.now()
+                end = datetime.now()
                 REQUEST_TIME_SUMMARY.observe((end - start).microseconds)
     except ConnectionClosedError:
         pass
@@ -62,6 +63,10 @@ async def on_washer_disconnect(address):
 
 
 async def on_washer_done(address):
+    database_connection = await asyncpg.connect(user='postgres',
+                                                password='password',
+                                                database='postgres',
+                                                host='localhost')
     async with Client(address) as client:
         async with client.messages() as messages:
             await client.subscribe("washing/done")
@@ -69,11 +74,26 @@ async def on_washer_done(address):
                 order = json.loads(message.payload.decode("utf-8"))
                 order_client_id = order["client_id"]
                 WASHING_TIME_SUMMARY.observe(int(order["took_seconds"]))
+                await save_order(order, database_connection)
                 print(f"Order done for client: {order_client_id}")
                 if order_client_id in clients:
                     print("Sending results to client...")
                     websocket = clients[order_client_id]
                     await websocket.send(f"Finished order {order}")
+    await database_connection.close()
+
+
+async def save_order(order: dict, conn):
+    try:
+        await conn.execute('INSERT INTO "order" VALUES ($1, $2, $3, $4, $5)',
+                           order["order_id"],
+                           order["client_id"],
+                           order["volume"],
+                           datetime.strptime(order["created_at"], '%Y-%m-%d %H:%M:%S'),
+                           datetime.strptime(order["finished_at"], '%Y-%m-%d %H:%M:%S'))
+    except Exception as e:
+        print(e)
+        exit(1)
 
 
 async def main(address):
